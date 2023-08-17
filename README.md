@@ -128,4 +128,66 @@ qsub Scripts/update_read_groups_run_parallel_step3.pbs
 Output will be `<outdir>/<sample>.final.bam` and `<outdir>/<sample>.final.bai`. The previous BAI file is simply copied from the old BAI in order to update filename and timestamp. The SAM and header files created during steps 1 and 2 are removed. 
 
 
+## Checking the output
+
+### Manually inspect the headers and read group IDs
+
+You should check that the read group headers and read group IDs look correct on at least one updated BAM. 
+
+Check the read group headers:
+
+```
+module load samtools
+samtools view -H <updated_BAM> | grep "@RG"
+```
+
+Example expected output (this will vary for your data depending on user-specified parameter values and flowcell-lanes detected in your BAM):
+```
+@RG     ID:H5WGHDSX2.1.STHD_F_Daenery_1 PL:illumina     PU:H5WGHDSX2.1  SM:STHD_F_Daenery       LB:STHD_F_Daenery_1     CN:Ramaciotti
+@RG     ID:H5WGHDSX2.2.STHD_F_Daenery_1 PL:illumina     PU:H5WGHDSX2.2  SM:STHD_F_Daenery       LB:STHD_F_Daenery_1     CN:Ramaciotti
+@RG     ID:H5WGHDSX2.3.STHD_F_Daenery_1 PL:illumina     PU:H5WGHDSX2.3  SM:STHD_F_Daenery       LB:STHD_F_Daenery_1     CN:Ramaciotti
+@RG     ID:H5WGHDSX2.4.STHD_F_Daenery_1 PL:illumina     PU:H5WGHDSX2.4  SM:STHD_F_Daenery       LB:STHD_F_Daenery_1     CN:Ramaciotti
+```
+
+
+Check the read group IDs:
+
+```
+module load samtools
+samtools view <updated_BAM> | head -3
+```
+
+Example expected output (read group ID is field  'RG:Z:<rgid>' - note the column number of this field can vary between datasets:
+```
+A00152:414:H5WGHDSX2:1:1213:24352:16861 163     MSTS01000001.1  1       2       60S87M3S        =       484     634     GTACATAGTATTAGCAATATTGTGTGATGATCAACTATGAATGACTCAGTTCCCAGCAAAACAATGATCCAAGACAAGTACAAAGAACTCACAAAGGAAAATGCTATCCACGTCCAGATAAAGAACTGATGGACTTTGTAGATCAAAGTA    FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF,FFFFF:FFF:FFFFFFFF:FFFFFFFFFFFFF:FFFFFFFFFFFFF,FFFFFFFFFF:,FF:FFF:FFFFFFFFFFFFFFFFFFFFFFF  MC:Z:94M1D56M   PG:Z:MarkDuplicates     RG:Z:H5WGHDSX2.1.STHD_F_Daenery_1       NM:i:0  MQ:i:60 AS:i:87 XS:i:112
+A00152:414:H5WGHDSX2:2:1359:30219:3192  163     MSTS01000001.1  1       32      49S87M1I13M     =       598     746     TAGCAATATTGTGTGATGATCAACTATGAATGACTCAGTTCCCAGCAAAACAATGATCCAAGACAAGTACAAAGAACTCACAAAGGAAAATGCTATCCACGTCCAGATAAAGAACTGATGGACTTTGTAGATCAAAGTACATATTTTTTA    FF:FFFFFFFF:FFFFFF:FFFF,:FFFFFFFFFF:FFFF:FFFFFF,FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF:FF:FFFFFFFF,FFFFFFFFFFFF,FF:FFFFFFFFFFFFFF:FFFFFFFF:,FFFFFF:FFFFFFFF  MC:Z:76M1I73M   PG:Z:MarkDuplicates     RG:Z:H5WGHDSX2.2.STHD_F_Daenery_1       NM:i:1  MQ:i:60 AS:i:93 XS:i:106
+A00152:414:H5WGHDSX2:2:2171:16034:28479 99      MSTS01000001.1  1       60      27S84M1I39M     =       270     420     ACTATGAATGACTCAGTTCCCAGCAAAACAATGATCCAAGACAAGTACAAAGAACTCACAAAGGAAAATGCTATCCACGTCCAGATAAAGAACTGATGGACTTTGTAGATCAAAATACATATTTTTTAAACTTTATTCTTTTTTGTGTGTT   FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF:FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF MC:Z:151M       PG:Z:MarkDuplicates     RG:Z:H5WGHDSX2.2.STHD_F_Daenery_1       NM:i:1  MQ:i:60 XQ:i:156 AS:i:116 XS:i:89
+```
+
+### Compare flagstat output
+
+If something went awry with the read line printing, for example missing a read or duplicating a mapping line, samtools flagstats would emit different values. This repository includes a qick checker script that can be used to compare the outputs of `samtools flagstats`.
+
+Note that it is not written as an `nci-parallel` job like the previous 3 steps. It is written to run from a bash `for` loop, using the sample IDs from the `Inputs/updated_read_groups_make_input.sh` file. The PBS logs will be made with the default naming method, and placed int he directory where the script is submitted. If you want to tidy this behaviour, adapt this script to the `nci-parallel` method, or simly create a directory for the PBS logs, cd into it, and submit the script from there, ensuring that the path to the script and the inputs file is update din the run command below.
+
+Before submitting, open `Scripts/sam_flagstats.pbs` and edit the variables `outdir=<outdir>`, `old_bam_dir=<old_bam_dir>`, and `new_bam_dir=<new_bam_dir>`. Update the file name format for `old_bam` to match your input data. Save, then submit with:
+
+```
+samples=($(awk -F "," '{print $1}' ./Inputs/update_read_groups.inputs))
+for sample in ${samples[@]}
+	do echo $sample
+	qsub -v sample="$sample" ./Scripts/sam_flagstats.pbs
+	sleep 2
+done
+```
+
+Output will be flagstats files in `<outdir>/new_stats` and `<outdir>/old_stats`. The script runs Linux `sdiff` on these files: if there is no difference, the exit status will be zero and no 'diff' line in the PBS .o log file. If there is a difference detected, the exit status will be 1 and there will be one or more lines of difference written to the PBS .o log file. 
+
+Simply grep for "Exit Status" from the `stats.o*` files. 
+
+### Checksums
+
+Once you have checked the BAMs, as always, create checksums, and use these to verify successful transfer to wherever you need to store them. 
+
+ 
 

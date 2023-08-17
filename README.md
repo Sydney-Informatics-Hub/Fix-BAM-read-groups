@@ -28,7 +28,22 @@ This workflow adds these read group fields to you BAM, as well as CN (sequencing
 
 Takes a BAM file and updates the @RG header lines and read group IDs within a BAM file, by first extracting the headers, then converting BAM to SAM, reading the SAM file line by line, and capturing the flowcell and lane from the unique read ID in order to update both the RG headers and the read group IDs. 
 
-The new RG headers (based on the user-specifed values and the flowcell and lane derived from the read IDs) over-write any existing @RG headers. The updated SAM file is then converted back to BAM format and the previous BAI is copied (to update the file name and time stamp).  
+The new RG headers (based on the user-specifed values and the flowcell and lane derived from the read IDs) over-write any existing @RG headers. The updated SAM file is then converted back to BAM format and the previous BAI is copied (to update the file name and time stamp). 
+
+The workflow is broken up into 3 steps to separate the multi-threading steps (1 and 3) from the single-threaded step 2.
+
+Steps 1 and 3 are simply SAM/BAM conversions, while step 2 performs the editing. 
+
+The read group IDs (attached to every read in the BAM file) are updated to:
+
+`<flowcell>.<lane>.<sampleID>_<lib>`
+
+The read group headers (one to many, reflecting the total number of flowcell-lanes found in the BAM) are updated to:
+
+`@RG\tID:<flowcell>.<lane>.<sampleID>_<lib>\tPL:<platform>\tPU:<flowcell>.<lane>\tSM:<sampleID>\tLB:<sampleID>\_<lib>\tCN:<centre>`
+
+This verbose format is adopted to adhere to universal standards and ensure downstream compatibility with GATK and other tools that make use of read group metadata. 
+
 
 ## Assumptions
 

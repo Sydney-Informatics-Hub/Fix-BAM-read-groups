@@ -59,7 +59,7 @@ while (my $line = <S> ) {
 		print O "$line\n"; 
 	
 		# Store the read group metadata for later replacing in the header: 
-		my $full_rg = "\@RG\tID\:$rg_id\tPL\:$platform\tPU:$flowcell\.$lane\tSM\:$sample\tLB\:$sample\_$lib\tCN\:$centre"; 
+		my $full_rg = "\@RG\tID\:$rg_id\tPL\:$platform\tPU\:$flowcell\.$lane\tSM\:$sample\tLB\:$sample\_$lib\tCN\:$centre"; 
 		$rgidhash->{$old_rg_id}->{full_rg} = $full_rg;
 	} 
 	else { # A header - will be updated at step 3 with samtools reheader (can't update @RG headers until all read groups are known)

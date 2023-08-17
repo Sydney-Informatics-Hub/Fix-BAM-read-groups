@@ -1,0 +1,73 @@
+#!/bin/bash 
+
+#########################################################
+#
+# Platform: NCI Gadi HPC
+# Description:  Run parallel update of SAM read group IDs and RG headers
+# see github.com/Sydney-Informatics-Hub/Fix-BAM-read-groups
+#
+# Author/s: Cali Willet
+# cali.willet@sydney.edu.au
+#
+# If you use this script towards a publication, please acknowledge the
+# Sydney Informatics Hub (or co-authorship, where appropriate).
+#
+# Suggested acknowledgement:
+# The authors acknowledge the scientific and technical assistance
+# <or e.g. bioinformatics assistance of <PERSON>> of Sydney Informatics
+# Hub and resources and services from the National Computational
+# Infrastructure (NCI), which is supported by the Australian Government
+# with access facilitated by the University of Sydney.
+#
+#########################################################
+
+#PBS -P <project>
+#PBS -N uRG-step2
+#PBS -l ncpus=20
+#PBS -l mem=180GB
+#PBS -l walltime=12:00:00
+#PBS -q normalbw
+#PBS -W umask=022
+#PBS -l wd
+#PBS -o ./PBS_logs/update_read_groups_step2.o
+#PBS -e ./PBS_logs/update_read_groups_step2.e
+#PBS -lstorage=<storage>
+
+module load nci-parallel/1.0.0a samtools/1.12
+
+set -e
+
+SCRIPT=./Scripts/update_read_groups_step2.pl
+INPUTS=./Inputs/update_read_groups.inputs
+
+NCPUS=1 
+
+ 
+#########################################################
+# Do not edit below this line
+#########################################################
+
+M=$(( PBS_NCI_NCPUS_PER_NODE / NCPUS )) #tasks per node
+
+sed "s|^|${SCRIPT} |" ${INPUTS} > ${PBS_JOBFS}/input-file
+
+mpirun --np $((M * PBS_NCPUS / PBS_NCI_NCPUS_PER_NODE)) \
+        --map-by node:PE=${NCPUS} \
+        nci-parallel \
+        --verbose \
+        --input-file ${PBS_JOBFS}/input-file
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

@@ -31,8 +31,8 @@ samtools view -@ $NCPUS -bo ${outdir}/${sample}_newRG.bam ${outdir}/${sample}_ne
 # Add the header
 samtools reheader -P ${outdir}/${sample}.header ${outdir}/${sample}_newRG.bam > ${outdir}/${sample}.final.bam
 
-# Copy the BAI:
-cp ${bai} ${outdir}/${sample}.final.bai
+# Re-index: 
+samtools index -@ ${NCPUS} ${outdir}/${sample}.final.bam
 
 # remove temp files:
 rm -rf ${outdir}/${sample}.header ${outdir}/${sample}*.sam ${outdir}/${sample}_newRG.bam

@@ -28,7 +28,7 @@ This workflow adds these read group fields to you BAM, as well as CN (sequencing
 
 Takes a BAM file and updates the @RG header lines and read group IDs within a BAM file, by first extracting the headers, then converting BAM to SAM, reading the SAM file line by line, and capturing the flowcell and lane from the unique read ID in order to update both the RG headers and the read group IDs. 
 
-The new RG headers (based on the user-specifed values and the flowcell and lane derived from the read IDs) over-write any existing @RG headers. The updated SAM file is then converted back to BAM format and the previous BAI is copied (to update the file name and time stamp). 
+The new RG headers (based on the user-specifed values and the flowcell and lane derived from the read IDs) over-write any existing @RG headers. The updated SAM file is then converted back to BAM format and new BAI index created. 
 
 The workflow is broken up into 3 steps to separate the multi-threading steps (1 and 3) from the single-threaded step 2.
 
@@ -125,7 +125,7 @@ Submit with:
 ```
 qsub Scripts/update_read_groups_run_parallel_step3.pbs
 ```
-Output will be `<outdir>/<sample>.final.bam` and `<outdir>/<sample>.final.bai`. The previous BAI file is simply copied from the old BAI in order to update filename and timestamp. The SAM and header files created during steps 1 and 2 are removed. 
+Output will be `<outdir>/<sample>.final.bam` and `<outdir>/<sample>.final.bai`. The SAM and header files created during steps 1 and 2 are removed. 
 
 
 ## Checking the output

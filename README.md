@@ -82,8 +82,25 @@ bash ./Scripts/update_read_groups_make_input.sh
 
 Output will be `./Inputs/update_read_groups.inputs` which contains the required information for each parallel task (one per input BAM) to be executed at the next step.
 
-The comma-delimited inputs file will be sorted from largest BAM to smallest. It will list the size in bytes of the BAM file (column 7) and the ratio of the BAM size to the smallest BAM (column 8). This is to aid in resourcing and compute efficiency for jobs where there is a big size difference between the BAMs to be reheadered. This is important as the walltime per BAM is dependent on BAM size.   
+The comma-delimited inputs file will be sorted from largest BAM to smallest. It will list the size in bytes of the BAM file (column 7) and the ratio of the BAM size to the smallest BAM (column 8). This is to aid in resourcing and compute efficiency for jobs where there is a big size difference between the BAMs to be re-readgrouped. This is important as the walltime per BAM is dependent on BAM size.   
 
+### Note on checking nci-parallel jobs
+
+Each parallel job should be subjected to multiple checks:
+	
+- Check the exit status of the parent job is zero (as reported in the ".o" PBS log file)
+- Check the exit status for each of the sub-tasks is zero (as reported in the ".e" PBS log file
+- Check that the expected outputs are present, and of the expected size and format
+
+To check the exit status of `nci-parallel` tasks, you can use grep, eg:
+```
+grep "exited with status 0" ./PBS_logs/update_read_groups_step1.e | wc -l
+```
+The number returned should be equal to the number of parallel tasks for the job. 
+
+These are generic checks. After the 3 main processing steps of this workflow are completed, there are workflow-specific check scripts included. 
+
+ 
 
 ### Step 1: Convert BAM to SAM
 
@@ -94,7 +111,7 @@ Open `Scripts/update_read_groups_run_parallel_step1.pbs` and adjust resources fo
 
 7 Broadwell CPU with 9 GB RAM per CPU is a good trade-off between walltime, CPU efficiency and SU. Other resource configurations may be faster, but cost more and are less efficient. 
 
-For example if you have 20 samples, applying 7 CPU per sample on the Broadwell normal queues, request a total of 7 x 20 CPUS = 1240 CPUs and 140 x 9 GB RAM = 1260 GB RAM to run all tasks at the same time. Note that if you have very large and very small BAMs, idle CPU will occur when the small BAMs complete long before the large BAMs. Since the inputs are size-sorted, you can request less CPU than required to run all tasks in parallel,  to increase overall CPU efficiency and decrease SU usage. Column 8 of the inputs file is designed to help you estimate the apropriate resourcing here. 
+For example if you have 20 samples, applying 7 CPU per sample on the Broadwell normal queues, request a total of 7 x 20 CPUS = 1240 CPUs and 140 x 9 GB RAM = 1260 GB RAM to run all tasks at the same time. Note that if you have very large and very small BAMs, idle CPU will occur when the small BAMs complete long before the large BAMs. Since the inputs are size-sorted, you can request less CPU than required to run all tasks in parallel,  to increase overall CPU efficiency and decrease SU usage. Column 8 of the inputs file is designed to help you estimate the appropriate resourcing here. 
 
 Walltime for one 89 GB BAM which uncompressed to 720 GB SAM was 24 minutes on the above resource settings. 
 
@@ -104,7 +121,7 @@ Submit step 1 with:
 qsub Scripts/update_read_groups_run_parallel_step1.pbs
 ```
 
-Output will be `<outdir>/<bam_prefix>.sam` and <outdir>/<bam_prefix>.header` files for each sample in `./Inputs/update_read_groups.inputs`. 
+Output will be `<outdir>/<bam_prefix>.sam` and `<outdir>/<bam_prefix>.header` files for each sample in `./Inputs/update_read_groups.inputs`. 
 
 
 ### Step 2: Update read groups in the SAM and RG headers in the headers file
@@ -138,7 +155,7 @@ Submit with:
 ```
 qsub Scripts/update_read_groups_run_parallel_step3.pbs
 ```
-Output will be `<outdir>/<bam_prefix>.rh.bam` and `<outdir>/<bam_prefix>.rh.bai`. The SAM and header files created during steps 1 and 2 are removed. 
+Output will be `<outdir>/<bam_prefix>.rh.bam` and `<outdir>/<bam_prefix>.rh.bam.bai`. The SAM and header files created during steps 1 and 2 are removed. 
 
 
 ## Checking the output
@@ -188,15 +205,15 @@ qsub Scripts/compare_flagstats_run_parallel.pbs
 
 Output will be flagstats files in the same directory that the newly created BAM files are in. 
 
-The script runs flagstats on the new and the original BAM files, and then uses Linux sdiff to compare them. If the flagstats files are the same, the 'old bam' flagstats file will be deleted. If there is a difference, the flagstats for the original BAM will not be deleted, and a `<outdir>/<bam_prefix>.diffStats` file will be present.  
+The script runs flagstats on the new and the original BAM files, and then uses Linux sdiff to compare them. If the flagstats files are the same, the original BAM flagstats file will be deleted. If there is a difference, the flagstats for the original BAM will not be deleted, and a `<outdir>/<bam_prefix>.diffStats` file will be present.  
 
-Errors at this stage can be detected by the final check script, to be run after flagstats AND validate check steps are run. 
+Errors at this stage can be detected by the final check script, to be run AFTER `compare_flagstats` AND `validate_bams` check steps are completed. 
 
 ### Validate BAM files with Picard
 
 This step can be carried out at the same time as the `compare_flagstats` job. 
 
-This runs PicardTools ValidateSamFiles to detect format issues with the new BAMs. It does not compare the original and new BAM files, just checks for correct formatting. 
+This runs PicardTools ValidateSamFiles to detect format issues with the new BAMs. It does not compare the original and new BAM files, just checks for correct BAM formatting. 
 
 Adjust resources depending on your number of samples, allowing 1 hugemem CPU and 31 GB per CPU per sample, and submit with:
 ```

@@ -25,12 +25,15 @@ use warnings;
 use strict; 
 
 my $inputs = $ARGV[0];
-my ($sample, $bam, $bai, $outdir, $lib, $centre, $platform) = split(',', $inputs); 
+my ($sample, $bam, $outdir, $lib, $centre, $platform, @rest) = split(',', $inputs); 
 
+my @patharray = split('/', $bam); 
+my $prefix = $patharray[-1]; 
+$prefix =~ s/\.bam//;  
 
-my $sam = "$outdir\/$sample\.sam";  
-my $new_sam = "$outdir\/$sample\_newRG.sam";
-my $header = "$outdir\/$sample\.header";
+my $sam = "$outdir\/$prefix\.sam";  
+my $new_sam = "$outdir\/$prefix\_newRG.sam";
+my $header = "$outdir\/$prefix\.header";
  
 my $rgidhash = {}; 
 

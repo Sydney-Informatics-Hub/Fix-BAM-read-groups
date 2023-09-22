@@ -23,11 +23,16 @@
 
 sample=`echo $1 | cut -d ',' -f 1`
 bam=`echo $1 | cut -d ',' -f 2`
-outdir=`echo $1 | cut -d ',' -f 4`
+outdir=`echo $1 | cut -d ',' -f 3`
+lib=`echo $1 | cut -d ',' -f 4`
+centre=`echo $1 | cut -d ',' -f 5`
+platform=`echo $1 | cut -d ',' -f 6`
+
+prefix=$(basename $bam | sed 's/\.bam//')
 
 # Get header: 
-samtools view -@ $NCPUS -Ho ${outdir}/${sample}.header ${bam}
+samtools view -@ $NCPUS -Ho ${outdir}/${prefix}.header ${bam}
 
 # Get SAM: 
 # Inlcude the header so 'reheader' tool can be used at step 3
-samtools view -@ $NCPUS -ho ${outdir}/${sample}.sam ${bam}
+samtools view -@ $NCPUS -ho ${outdir}/${prefix}.sam ${bam}

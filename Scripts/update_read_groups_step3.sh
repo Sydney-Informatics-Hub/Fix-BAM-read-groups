@@ -22,17 +22,19 @@
 #########################################################
 
 sample=`echo $1 | cut -d ',' -f 1`
-bai=`echo $1 | cut -d ',' -f 3`
-outdir=`echo $1 | cut -d ',' -f 4`
+bam=`echo $1 | cut -d ',' -f 2`
+outdir=`echo $1 | cut -d ',' -f 3`
+
+prefix=$(basename $bam | sed 's/\.bam//')
 
 # Convert updated SAM to BAM: 
-samtools view -@ $NCPUS -bo ${outdir}/${sample}_newRG.bam ${outdir}/${sample}_newRG.sam
+samtools view -@ $NCPUS -bo ${outdir}/${prefix}_newRG.bam ${outdir}/${prefix}_newRG.sam
 
 # Add the header
-samtools reheader -P ${outdir}/${sample}.header ${outdir}/${sample}_newRG.bam > ${outdir}/${sample}.final.bam
+samtools reheader -P ${outdir}/${prefix}.header ${outdir}/${prefix}_newRG.bam > ${outdir}/${prefix}.rh.bam
 
 # Re-index: 
-samtools index -@ ${NCPUS} ${outdir}/${sample}.final.bam
+samtools index -@ ${NCPUS} ${outdir}/${prefix}.rh.bam
 
 # remove temp files:
-rm -rf ${outdir}/${sample}.header ${outdir}/${sample}*.sam ${outdir}/${sample}_newRG.bam
+rm -rf ${outdir}/${prefix}.header ${outdir}/${prefix}*.sam ${outdir}/${prefix}_newRG.bam

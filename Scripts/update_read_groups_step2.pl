@@ -25,13 +25,17 @@ use warnings;
 use strict; 
 
 my $inputs = $ARGV[0];
-my ($sample, $bam, $bai, $outdir, $lib, $centre, $platform) = split(',', $inputs); 
+my ($sample, $bam, $outdir, $lib, $centre, $platform, @rest) = split(',', $inputs); 
 
+my @patharray = split('/', $bam); 
+my $prefix = $patharray[-1]; 
+$prefix =~ s/\.bam//;  
 
-my $sam = "$outdir\/$sample\.sam";  
-my $new_sam = "$outdir\/$sample\_newRG.sam";
-my $header = "$outdir\/$sample\.header";
- 
+my $sam = "$outdir\/$prefix\.sam";  
+my $new_sam = "$outdir\/$prefix\_newRG.sam";
+my $header = "$outdir\/$prefix\.header";
+my $new_header = "$outdir\/$prefix\_new.header"; 
+
 my $rgidhash = {}; 
 
 open (S, $sam) || die "$! $sam\n";
@@ -59,8 +63,9 @@ while (my $line = <S> ) {
 		print O "$line\n"; 
 	
 		# Store the read group metadata for later replacing in the header: 
-		my $full_rg = "\@RG\tID\:$rg_id\tPL\:$platform\tPU\:$flowcell\.$lane\tSM\:$sample\tLB\:$sample\_$lib\tCN\:$centre"; 
-		$rgidhash->{$old_rg_id}->{full_rg} = $full_rg;
+		my $new_rg_id = "\@RG\tID\:$rg_id\tPL\:$platform\tPU\:$flowcell\.$lane\tSM\:$sample\tLB\:$sample\_$lib\tCN\:$centre"; 
+		$rgidhash->{$new_rg_id}->{old_rg_id} = $old_rg_id;
+		
 	} 
 	else { # A header - will be updated at step 3 with samtools reheader (can't update @RG headers until all read groups are known)
 		print O "$line\n";	
@@ -68,8 +73,26 @@ while (my $line = <S> ) {
 	 
 } close S; close O; 
 
-# Update headers file with new read group metadata: 
-foreach my $old_rg_id (sort keys %{$rgidhash}) {
-	my $new_id = $rgidhash->{$old_rg_id}->{full_rg}; 
-	`sed -i 's/.*ID\:$old_rg_id.*/$new_id/'  $header`; 
-}
+# Replace read groups in headers
+# This method ensures that all read groups identified from the reads are written to headers
+# Direct find and replace proved fallible when the original BAM had fewer RG headers than correct
+open (H, $header) || die "$! $header\n";
+open (NH, ">$new_header") || die "$! $new_header\n";
+my $done_rg = 0; 
+
+while (my $line = <H>) {
+	chomp $line; 
+	if ($line =~ m/^\@RG/) { 
+		if ( ! $done_rg) {
+			foreach my $new_rg_id (sort keys %{$rgidhash}) {
+				print NH  "$new_rg_id\n"; 
+			}
+			$done_rg++; 
+		}				
+	}
+	else {
+		print NH "$line\n"; 
+	} 
+} close H; close NH; 
+
+`mv $new_header $header`;

@@ -3,7 +3,7 @@
 #########################################################
 #
 # Platform: NCI Gadi HPC
-# Description:  Convert updated SAM to BAM
+# Description:  Simple check for compelteness with flagstats
 # see github.com/Sydney-Informatics-Hub/Fix-BAM-read-groups
 #
 # Author/s: Cali Willet
@@ -21,20 +21,26 @@
 #
 #########################################################
 
+
 sample=`echo $1 | cut -d ',' -f 1`
-bam=`echo $1 | cut -d ',' -f 2`
-outdir=`echo $1 | cut -d ',' -f 3`
+old_bam=`echo $1 | cut -d ',' -f 2`
+bam_dir=`echo $1 | cut -d ',' -f 3`
 
-prefix=$(basename $bam | sed 's/\.bam//')
+prefix=$(basename $old_bam | sed 's/\.bam//')
+new_bam=${bam_dir}/${prefix}.rh.bam
 
-# Convert updated SAM to BAM: 
-samtools view -@ $NCPUS -bo ${outdir}/${prefix}_newRG.bam ${outdir}/${prefix}_newRG.sam
 
-# Add the header
-samtools reheader -P ${outdir}/${prefix}.header ${outdir}/${prefix}_newRG.bam > ${outdir}/${prefix}.rh.bam
+old_stats=${bam_dir}/${prefix}.OLD.flagstats
+new_stats=${bam_dir}/${prefix}.rh.flagstats
+diff_stats=${bam_dir}/${prefix}.diffStats
 
-# Re-index: 
-samtools index -@ ${NCPUS} ${outdir}/${prefix}.rh.bam
+samtools flagstat -@ $PBS_NCPUS $old_bam > $old_stats
+samtools flagstat -@ $PBS_NCPUS $new_bam > $new_stats
 
-# remove temp files:
-rm -rf ${outdir}/${prefix}.header ${outdir}/${prefix}*.sam ${outdir}/${prefix}_newRG.bam
+sdiff -s $old_stats $new_stats > ${diff_stats}
+
+if ! [ -s ${diff_stats} ]
+then 
+	# Diff file is empty
+	rm -rf ${diff_stats} ${old_stats}
+fi

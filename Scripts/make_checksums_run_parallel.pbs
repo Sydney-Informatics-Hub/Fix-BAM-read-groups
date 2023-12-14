@@ -3,7 +3,7 @@
 #########################################################
 #
 # Platform: NCI Gadi HPC
-# Description:  Run parallel BAM read group update step 1
+# Description:  Run parallel md5sum creation
 # see github.com/Sydney-Informatics-Hub/Fix-BAM-read-groups
 #
 # Author/s: Cali Willet
@@ -21,26 +21,27 @@
 #
 #########################################################
 
-#PBS -P qe80
-#PBS -N uRG-step1
-#PBS -l ncpus=2520
-#PBS -l mem=22680GB
-#PBS -l walltime=01:00:00
+#PBS -P er01
+#PBS -N make-md5
+#PBS -l ncpus=196
+#PBS -l mem=1764GB
+#PBS -l walltime=02:00:00
 #PBS -q normalbw
 #PBS -W umask=022
 #PBS -l wd
-#PBS -o ./PBS_logs/update_read_groups_step1.o
-#PBS -e ./PBS_logs/update_read_groups_step1.e
+#PBS -o ./PBS_logs/make_checksums.o
+#PBS -e ./PBS_logs/make_checksums.e
 #PBS -l storage=scratch/qe80+gdata/qe80+scratch/er01
 
-module load nci-parallel/1.0.0a samtools/1.12
+module load nci-parallel/1.0.0a
+
 
 set -e
 
-SCRIPT=./Scripts/update_read_groups_step1.sh
+SCRIPT=./Scripts/make_checksums.sh
 INPUTS=./Inputs/update_read_groups.inputs
 
-NCPUS=7 # CPU per parallel task 
+NCPUS=1 # CPU per parallel task 
 
  
 #########################################################

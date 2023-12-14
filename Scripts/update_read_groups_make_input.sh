@@ -25,54 +25,79 @@
 #############################
 # UPDATE VARIABLES: 
 
-# Library ID
-# if no specific library ID for this sample extraction, leave as 1
-lib=1 
+project=qe80
+lstorage="scratch/qe80+gdata/qe80+scratch/er01"
 
-# Sequencing centre
-centre=Ramaciotti 
 
-# Sequencing platform 
-platform=illumina 
-
-# Location of input BAMs 
-indir=/g/data/qe80/bams  
-
-# Check assumption: that all BAMs in this dir are to be used
-# Update if required
-bams=($(ls ${indir}/*bam))
-bais=($(ls ${indir}/*bai))
-
-# Check assumption: that the sample ID is separated from BAM suffix by '.'
-# Update of required 
-samples=($(ls ${indir}/*bam | rev | cut -d '/' -f 1 | rev | cut -d '.' -f 1 )) 
+# Config
+config=/scratch/qe80/reheader_bams.config
 
 # Output directory for new BAMs
-outdir=/scratch/er01/PIPE-4346-BW-WGS/qe80_updated_readGroup_bams 
+outdir=/scratch/er01/PIPE-4346-BW-WGS/qe80_updated_readGroup_bams_360s 
 
-# Output directory for job logs:
-logdir=./PBS_logs 
+# Sequencing platform
+# Note that if not illumina, you will need to check the flowcell and lane variables 
+# are correctly filled depending on your read id format 
+platform=illumina 
+
 
 # END UPDATE
 #############################
 
-inputs=./Inputs/
+
+# Update project and storage: 
+sed -i "s|^#PBS -P.*|#PBS -P ${project}|g" ./Scripts/*pbs
+sed -i "s|^#PBS -l[ ]*storage.*|#PBS -l storage=${lstorage}|g" ./Scripts/*pbs
+
+
+# Set up output dirs
+inputs=./Inputs
+logdir=./PBS_logs
 
 mkdir -p $outdir $logdir $inputs
 
+
+# Write the inputs file
 inputs=./Inputs/update_read_groups.inputs
 rm -rf $inputs
-
-for (( i = 0; i < ${#bams[@]}; i++ ))
-do
-	bam=${bams[$i]}
-	sample=${samples[$i]}
-	bai=${bais[$i]}
+while read line
+do 
+	sample=$(echo $line | awk '{print $1}')
+	bam=$(echo $line | awk '{print $2}')
+	centre=$(echo $line | awk '{print $3}')
+	lib=$(echo $line | awk '{print $4}')
 	
-	printf "${sample},${bam},${bai},${outdir},${lib},${centre},${platform}\n" >> $inputs 
+	size=$(ls -l ${bam} | awk '{print $5}')
 	
-done 
+	if ! [[ $lib ]]
+	then
+		lib=1
+	fi
+	
+	printf "${sample},${bam},${outdir},${lib},${centre},${platform},${size}\n" >> $inputs
+	
+done < ${config}
 
-echo `wc -l < $inputs` tasks written to $inputs 
+
+# Add scale to assist efficient resourcing 
+min=$(awk -F , '{print $7}' ${inputs} | sort -n | head -1)
+
+with_scale=${inputs}-scaled
+rm -rf ${with_scale}
+
+while read line
+do 
+	size=$(echo $line | awk -F , '{print $7}')
+	scale=$( printf '%.2f\n' $(echo "${size}/${min}" | bc -l) )
+		
+	printf "${line},${scale}\n" >> ${with_scale}
+done < ${inputs} 
+
+
+# Size sort to improve parallel efficiency
+sort -t ',' -rnk 8 ${with_scale} > ${inputs}
+rm ${with_scale}
+
+echo `wc -l < ${inputs}` tasks written to ${inputs} 
 
 

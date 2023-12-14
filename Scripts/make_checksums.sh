@@ -3,7 +3,7 @@
 #########################################################
 #
 # Platform: NCI Gadi HPC
-# Description:  Convert updated SAM to BAM
+# Description:  Make checksums for new BAMs 
 # see github.com/Sydney-Informatics-Hub/Fix-BAM-read-groups
 #
 # Author/s: Cali Willet
@@ -21,20 +21,12 @@
 #
 #########################################################
 
+
 sample=`echo $1 | cut -d ',' -f 1`
-bam=`echo $1 | cut -d ',' -f 2`
-outdir=`echo $1 | cut -d ',' -f 3`
+old_bam=`echo $1 | cut -d ',' -f 2`
+bam_dir=`echo $1 | cut -d ',' -f 3`
 
-prefix=$(basename $bam | sed 's/\.bam//')
+prefix=$(basename $old_bam | sed 's/\.bam//')
+new_bam=${bam_dir}/${prefix}.rh.bam
 
-# Convert updated SAM to BAM: 
-samtools view -@ $NCPUS -bo ${outdir}/${prefix}_newRG.bam ${outdir}/${prefix}_newRG.sam
-
-# Add the header
-samtools reheader -P ${outdir}/${prefix}.header ${outdir}/${prefix}_newRG.bam > ${outdir}/${prefix}.rh.bam
-
-# Re-index: 
-samtools index -@ ${NCPUS} ${outdir}/${prefix}.rh.bam
-
-# remove temp files:
-rm -rf ${outdir}/${prefix}.header ${outdir}/${prefix}*.sam ${outdir}/${prefix}_newRG.bam
+md5sum ${new_bam} > ${new_bam}.md5

@@ -3,7 +3,7 @@
 #########################################################
 #
 # Platform: NCI Gadi HPC
-# Description:  Run parallel BAM read group update step 1
+# Description:  Run parallel BAM validation
 # see github.com/Sydney-Informatics-Hub/Fix-BAM-read-groups
 #
 # Author/s: Cali Willet
@@ -22,25 +22,26 @@
 #########################################################
 
 #PBS -P qe80
-#PBS -N uRG-step1
-#PBS -l ncpus=2520
-#PBS -l mem=22680GB
-#PBS -l walltime=01:00:00
-#PBS -q normalbw
+#PBS -N valbam
+#PBS -l ncpus=192
+#PBS -l mem=5760GB
+#PBS -l walltime=03:00:00
+#PBS -q hugemem
 #PBS -W umask=022
 #PBS -l wd
-#PBS -o ./PBS_logs/update_read_groups_step1.o
-#PBS -e ./PBS_logs/update_read_groups_step1.e
+#PBS -o ./PBS_logs/validate_bams.o
+#PBS -e ./PBS_logs/validate_bams.e
 #PBS -l storage=scratch/qe80+gdata/qe80+scratch/er01
 
-module load nci-parallel/1.0.0a samtools/1.12
+module load nci-parallel/1.0.0a gatk/4.4.0.0
+
 
 set -e
 
-SCRIPT=./Scripts/update_read_groups_step1.sh
+SCRIPT=./Scripts/validate_bams.sh
 INPUTS=./Inputs/update_read_groups.inputs
 
-NCPUS=7 # CPU per parallel task 
+NCPUS=1 # CPU per parallel task 
 
  
 #########################################################

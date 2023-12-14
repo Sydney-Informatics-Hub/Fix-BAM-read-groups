@@ -21,17 +21,17 @@
 #
 #########################################################
 
-#PBS -P ki31
+#PBS -P qe80
 #PBS -N uRG-step3
-#PBS -l ncpus=140
-#PBS -l mem=1260GB
+#PBS -l ncpus=196
+#PBS -l mem=1764GB
 #PBS -l walltime=03:00:00
 #PBS -q normalbw
 #PBS -W umask=022
 #PBS -l wd
 #PBS -o ./PBS_logs/update_read_groups_step3.o
 #PBS -e ./PBS_logs/update_read_groups_step3.e
-#PBS -lstorage=scratch/er01+scratch/qe80+gdata/qe80
+#PBS -l storage=scratch/qe80+gdata/qe80+scratch/er01
 
 module load nci-parallel/1.0.0a samtools/1.12
 
